@@ -1,0 +1,41 @@
+name: Draft Order
+
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-draw:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Generate draft and save
+        run: scripts/draft_order.sh --seed "$GITHUB_SHA" | tee DRAFT_ORDER.txt
+
+      - name: Update README
+        run: |
+          scripts/update_readme.sh < DRAFT_ORDER.txt
+
+      - name: Commit README (skip CI)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add README.md
+
+          if git diff --cached --quiet; then
+            echo "No README changes."
+            exit 0
+          fi
+
+          git commit -m "Update draft order"
+          git push
